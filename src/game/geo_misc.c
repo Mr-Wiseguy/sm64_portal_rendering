@@ -228,3 +228,62 @@ Gfx *geo_exec_cake_end_screen(s32 callContext, struct GraphNode *node, UNUSED f3
 
     return displayList;
 }
+
+extern u8 portalsActive[];
+extern Vec3s portalPositions[];
+
+u8 portalsActive[] = {
+    1,
+    0,
+};
+
+Vec3s portalPositions[] = {
+    {-1328, 360, 4664},
+    {0, 0, 0},
+};
+
+#define	RM_PORTAL(clk) \
+    Z_UPD | CVG_DST_FULL | ALPHA_CVG_SEL | ZMODE_OPA | \
+    GBL_c##clk(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_A_MEM)
+
+Gfx *geo_draw_portals(s32 callContext, UNUSED struct GraphNode *node, UNUSED f32 mtx[4][4])
+{
+    Gfx *dl = NULL; 
+    Gfx *dlHead;
+    s32 i;
+    if (callContext == GEO_CONTEXT_RENDER) {
+        dlHead = dl = alloc_display_list((6 + 2 * 2) * sizeof(Gfx));
+        gDPPipeSync(dlHead++);
+        gDPSetRenderMode(dlHead++, RM_PORTAL(1), RM_PORTAL(2));
+        gDPSetCombineLERP(dlHead++, 0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0);
+        gSPClearGeometryMode(dlHead++, G_CULL_BACK);
+        for (i = 0; i < 2; i++)
+        {
+            if (portalsActive[i])
+            {
+                Vtx *portalVerts = alloc_display_list(4 * sizeof(Vtx));
+                gSPVertex(dlHead++, portalVerts, 4, 0);
+                gSP2Triangles(dlHead++, 0, 1, 2, 0x00, 2, 1, 3, 0x00);
+
+                portalVerts[0].v.ob[0] = portalPositions[i][0] - 100;
+                portalVerts[0].v.ob[1] = portalPositions[i][1] - 100;
+                portalVerts[0].v.ob[2] = portalPositions[i][2];
+
+                portalVerts[1].v.ob[0] = portalPositions[i][0] + 100;
+                portalVerts[1].v.ob[1] = portalPositions[i][1] - 100;
+                portalVerts[1].v.ob[2] = portalPositions[i][2];
+
+                portalVerts[2].v.ob[0] = portalPositions[i][0] - 100;
+                portalVerts[2].v.ob[1] = portalPositions[i][1] + 100;
+                portalVerts[2].v.ob[2] = portalPositions[i][2];
+
+                portalVerts[3].v.ob[0] = portalPositions[i][0] + 100;
+                portalVerts[3].v.ob[1] = portalPositions[i][1] + 100;
+                portalVerts[3].v.ob[2] = portalPositions[i][2];
+            }
+        }
+        gSPSetGeometryMode(dlHead++, G_CULL_BACK);
+        gSPEndDisplayList(dlHead++);
+    }
+    return dl;
+}
