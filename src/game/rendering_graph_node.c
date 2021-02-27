@@ -11,6 +11,8 @@
 #include "shadow.h"
 #include "sm64.h"
 
+#define static
+
 /**
  * This file contains the code that processes the scene graph for rendering.
  * The scene graph is responsible for drawing everything except the HUD / text boxes.
@@ -304,6 +306,12 @@ static void geo_process_switch(struct GraphNodeSwitchCase *node) {
     }
 }
 
+extern s32 gPortalRenderPass;
+
+u8 newCameraNext = 1;
+
+Mat4 gCameraTransform;
+
 /**
  * Process a camera node.
  */
@@ -319,8 +327,35 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
 
     gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(rollMtx), G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);
 
-    mtxf_lookat(cameraTransform, node->pos, node->focus, node->roll);
-    mtxf_mul(gMatStack[gMatStackIndex + 1], cameraTransform, gMatStack[gMatStackIndex]);
+    if (newCameraNext)
+    {
+        newCameraNext = 0;
+        mtxf_lookat(cameraTransform, node->pos, node->focus, node->roll);
+        mtxf_mul(gCameraTransform, cameraTransform, gMatStack[gMatStackIndex]);
+    }
+
+    if (gPortalRenderPass != 0)
+    {
+        Vec3f realPos;
+        Vec3f realFocus;
+        vec3f_copy(realPos, node->pos);
+        vec3f_copy(realFocus, node->focus);
+        // realPos[0] += 1000 * gPortalRenderPass;
+        // realPos[1] += 200;
+        // realFocus[0] += 1000 * gPortalRenderPass;
+        // realFocus[1] += 200;
+        realPos[0] += -500 * (gPortalRenderPass * 2 + 3);
+        realFocus[0] += -500 * (gPortalRenderPass * 2 + 3);
+        
+        mtxf_lookat(cameraTransform, realPos, realFocus, node->roll);
+        mtxf_mul(gMatStack[gMatStackIndex + 1], cameraTransform, gMatStack[gMatStackIndex]);
+    }
+    else
+    {
+        mtxf_copy(gMatStack[gMatStackIndex + 1], gCameraTransform);
+        newCameraNext = 1;
+    }
+
     gMatStackIndex++;
     mtxf_to_mtx(mtx, gMatStack[gMatStackIndex]);
     gMatStackFixed[gMatStackIndex] = mtx;
@@ -1034,6 +1069,10 @@ void geo_process_node_and_siblings(struct GraphNode *firstNode) {
     } while (iterateChildren && (curGraphNode = curGraphNode->next) != firstNode);
 }
 
+#include "portal.h"
+
+s32 gPortalRenderPass;
+
 /**
  * Process a root node. This is the entry point for processing the scene graph.
  * The root node itself sets up the viewport, then all its children are processed
@@ -1043,38 +1082,43 @@ void geo_process_root(struct GraphNodeRoot *node, Vp *b, Vp *c, s32 clearColor) 
     UNUSED s32 unused;
 
     if (node->node.flags & GRAPH_RENDER_ACTIVE) {
-        Mtx *initialMatrix;
-        Vp *viewport = alloc_display_list(sizeof(*viewport));
-
         gDisplayListHeap = alloc_only_pool_init(main_pool_available() - sizeof(struct AllocOnlyPool),
                                                 MEMORY_POOL_LEFT);
-        initialMatrix = alloc_display_list(sizeof(*initialMatrix));
-        gMatStackIndex = 0;
-        gCurAnimType = 0;
-        vec3s_set(viewport->vp.vtrans, node->x * 4, node->y * 4, 511);
-        vec3s_set(viewport->vp.vscale, node->width * 4, node->height * 4, 511);
-        if (b != NULL) {
-            clear_frame_buffer(clearColor);
-            make_viewport_clip_rect(b);
-            *viewport = *b;
-        }
 
-        else if (c != NULL) {
-            clear_frame_buffer(clearColor);
-            make_viewport_clip_rect(c);
-        }
+        for (gPortalRenderPass = -1; gPortalRenderPass <= 0; gPortalRenderPass++)
+        {
+            Mtx *initialMatrix;
+            Vp *viewport;
 
-        mtxf_identity(gMatStack[gMatStackIndex]);
-        mtxf_to_mtx(initialMatrix, gMatStack[gMatStackIndex]);
-        gMatStackFixed[gMatStackIndex] = initialMatrix;
-        gSPViewport(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(viewport));
-        gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(gMatStackFixed[gMatStackIndex]),
-                  G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
-        gCurGraphNodeRoot = node;
-        if (node->node.children != NULL) {
-            geo_process_node_and_siblings(node->node.children);
+            initialMatrix = alloc_display_list(sizeof(*initialMatrix));
+            viewport = alloc_display_list(sizeof(*viewport));
+            gMatStackIndex = 0;
+            gCurAnimType = 0;
+            vec3s_set(viewport->vp.vtrans, node->x * 4, node->y * 4, 511);
+            vec3s_set(viewport->vp.vscale, node->width * 4, node->height * 4, 511);
+            if (b != NULL) {
+                clear_frame_buffer(clearColor);
+                make_viewport_clip_rect(b);
+                *viewport = *b;
+            }
+
+            else if (c != NULL) {
+                clear_frame_buffer(clearColor);
+                make_viewport_clip_rect(c);
+            }
+
+            mtxf_identity(gMatStack[gMatStackIndex]);
+            mtxf_to_mtx(initialMatrix, gMatStack[gMatStackIndex]);
+            gMatStackFixed[gMatStackIndex] = initialMatrix;
+            gSPViewport(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(viewport));
+            gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(gMatStackFixed[gMatStackIndex]),
+                    G_MTX_MODELVIEW | G_MTX_LOAD | G_MTX_NOPUSH);
+            gCurGraphNodeRoot = node;
+            if (node->node.children != NULL) {
+                geo_process_node_and_siblings(node->node.children);
+            }
+            gCurGraphNodeRoot = NULL;
         }
-        gCurGraphNodeRoot = NULL;
         if (gShowDebugText) {
             print_text_fmt_int(180, 36, "MEM %d",
                                gDisplayListHeap->totalSpace - gDisplayListHeap->usedSpace);

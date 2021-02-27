@@ -1692,6 +1692,8 @@ void func_sh_8025574C(void) {
 }
 #endif
 
+#include "portal.h"
+
 /**
  * Main function for executing Mario's behavior.
  */
@@ -1704,6 +1706,14 @@ s32 execute_mario_action(UNUSED struct Object *o) {
         update_mario_inputs(gMarioState);
         mario_handle_special_floors(gMarioState);
         mario_process_interactions(gMarioState);
+
+        if (gPlayer1Controller->buttonPressed & U_JPAD)
+        {
+            Vec3f pos;
+            vec3f_copy(pos, gMarioState->pos);
+            pos[1] += 100;
+            mtxf_rotate_xyz_and_translate(gPortalStates[0].transform, pos, gMarioState->faceAngle);
+        }
 
         // If Mario is OOB, stop executing actions.
         if (gMarioState->floor == NULL) {

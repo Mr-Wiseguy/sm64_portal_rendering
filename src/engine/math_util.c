@@ -871,3 +871,41 @@ s32 anim_spline_poll(Vec3f result) {
 
     return hasEnded;
 }
+
+// Thank you rocket robot
+void vec3f_rotate(Mat4 mat, Vec3f in, Vec3f out)
+{
+    out[0] = mat[0][0] * in[0] + mat[1][0] * in[1] + mat[2][0] * in[2];
+    out[1] = mat[0][1] * in[0] + mat[1][1] * in[1] + mat[2][1] * in[2];
+    out[2] = mat[0][2] * in[0] + mat[1][2] * in[1] + mat[2][2] * in[2];
+}
+
+void vec3f_transform(Mat4 mat, Vec3f in, f32 w, Vec3f out)
+{
+    s32 i, j;
+    for (i = 0; i < 3; i++)
+    {
+        out[i] = mat[3][i] * w;
+        for (j = 0; j < 3; j++)
+        {
+            out[i] += mat[j][i] * in[j];
+        }
+    }
+}
+
+void vec3f_transform_vtx(Mat4 mat, Vec3f in, f32 w, Vtx *out)
+{
+    Vec3f temp;
+    s32 i, j;
+    for (i = 0; i < 3; i++)
+    {
+        temp[i] = mat[3][i] * w;
+        for (j = 0; j < 3; j++)
+        {
+            temp[i] += mat[j][i] * in[j];
+        }
+    }
+    out->v.ob[0] = temp[0];
+    out->v.ob[1] = temp[1];
+    out->v.ob[2] = temp[2];
+}

@@ -2635,6 +2635,9 @@ const Gfx dl_skybox_begin[] = {
     gsDPSetCombineMode(G_CC_MODULATERGB, G_CC_MODULATERGB),
     gsSPPerspNormalize(0xFFFF),
     gsSPMatrix(&matrix_identity, G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH),
+    gsDPSetRenderMode(G_RM_ZB_OPA_SURF, G_RM_ZB_OPA_SURF2),
+    gsDPSetDepthSource(G_ZS_PRIM),
+    gsDPSetPrimDepth(0x7FFF, 0),
     gsSPEndDisplayList(),
 };
 
@@ -2654,6 +2657,7 @@ const Gfx dl_skybox_end[] = {
     gsSPTexture(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF),
     gsSPSetGeometryMode(G_LIGHTING),
     gsDPSetCombineMode(G_CC_SHADE, G_CC_SHADE),
+    gsDPSetDepthSource(G_ZS_PIXEL),
     gsSPEndDisplayList(),
 };
 
