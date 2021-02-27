@@ -139,6 +139,7 @@ void clear_z_buffer(void) {
     gDPSetColorImage(gDisplayListHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, gPhysicalZBuffer);
     gDPSetFillColor(gDisplayListHead++,
                     GPACK_ZDZ(G_MAXFBZ, 0) << 16 | GPACK_ZDZ(G_MAXFBZ, 0));
+                    // 0); // TODO remove this temp
 
     gDPFillRectangle(gDisplayListHead++, 0, BORDER_HEIGHT, SCREEN_WIDTH - 1,
                      SCREEN_HEIGHT - 1 - BORDER_HEIGHT);

@@ -909,3 +909,37 @@ void vec3f_transform_vtx(Mat4 mat, Vec3f in, f32 w, Vtx *out)
     out->v.ob[1] = temp[1];
     out->v.ob[2] = temp[2];
 }
+
+// Rotation/translation matrix inverse
+void mtxf_inverse_rotate_translate(Mat4 in, Mat4 out) {
+    Mat4 invRot;
+    Vec3f negTranslate;
+    Mat4 invTranslate;
+
+    invRot[0][0] = in[0][0];
+    invRot[0][1] = in[1][0];
+    invRot[0][2] = in[2][0];
+    invRot[0][3] = 0.0f;
+
+    invRot[1][0] = in[0][1];
+    invRot[1][1] = in[1][1];
+    invRot[1][2] = in[2][1];
+    invRot[1][3] = 0.0f;
+
+    invRot[2][0] = in[0][2];
+    invRot[2][1] = in[1][2];
+    invRot[2][2] = in[2][2];
+    invRot[2][3] = 0.0f;
+
+    invRot[3][0] = 0.0f;
+    invRot[3][1] = 0.0f;
+    invRot[3][2] = 0.0f;
+    invRot[3][3] = 1.0f;
+
+    negTranslate[0] = -in[3][0];
+    negTranslate[1] = -in[3][1];
+    negTranslate[2] = -in[3][2];
+
+    mtxf_translate(invTranslate, negTranslate);
+    mtxf_mul(out, invTranslate, invRot);
+}

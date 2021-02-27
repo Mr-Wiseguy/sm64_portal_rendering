@@ -74,5 +74,6 @@ s32 anim_spline_poll(Vec3f result);
 void vec3f_rotate(Mat4 mat, Vec3f in, Vec3f out);
 void vec3f_transform(Mat4 mat, Vec3f in, f32 w, Vec3f out);
 void vec3f_transform_vtx(Mat4 mat, Vec3f in, f32 w, Vtx *out);
+void mtxf_inverse_rotate_translate(Mat4 in, Mat4 out);
 
 #endif // MATH_UTIL_H

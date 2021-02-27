@@ -6,7 +6,7 @@ const GeoLayout castle_grounds_geo_00073C[] = {
       GEO_OPEN_NODE(),
          GEO_CAMERA_FRUSTUM_WITH_FUNC(45, 100, 20000, geo_camera_fov),
          GEO_OPEN_NODE(),
-            GEO_CAMERA(16, 0, 1500, 2500, 0, 1500, -12000, geo_camera_main),
+            GEO_PORTAL_CAMERA(16, 0, 1500, 2500, 0, 1500, -12000, geo_camera_main),
             GEO_OPEN_NODE(),
                GEO_ASM(0, geo_zbuffer_clear),
                GEO_ASM(0, geo_draw_portals),

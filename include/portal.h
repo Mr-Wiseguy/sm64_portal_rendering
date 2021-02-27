@@ -7,10 +7,13 @@
 
 struct PortalState {
     Mat4 transform;
+    Mat4 inverseTransform;
     s32 pairedPortal;
     u8 active;
 };
 
 extern struct PortalState gPortalStates[NUM_PORTALS];
+
+extern s32 gPortalRenderPass;
 
 #endif

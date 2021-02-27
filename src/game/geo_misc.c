@@ -234,28 +234,80 @@ extern uintptr_t gPhysicalZBuffer;
 extern u16 frameBufferIndex;
 extern uintptr_t gPhysicalFrameBuffers[];
 
+Vec3f gPortalVerts[4] = {
+    {-100, -100, 0},
+    { 100, -100, 0},
+    {-100,  100, 0},
+    { 100,  100, 0},
+};    
+
+#define	RM_PORTAL_ZCLEAR(clk) \
+    IM_RD | Z_UPD | CVG_DST_FULL | ZMODE_OPA | FORCE_BL | \
+    GBL_c##clk(G_BL_CLR_IN, G_BL_A_IN, G_BL_CLR_MEM, G_BL_1MA)
+
 Gfx *geo_zbuffer_clear(s32 callContext, UNUSED struct GraphNode *node, UNUSED Mat4 *mtx) {
     Gfx *dl = NULL;
     if (callContext == GEO_CONTEXT_RENDER) {
         Gfx *dlHead = NULL;
-        dl = alloc_display_list(13 * sizeof(*dl));
-        dlHead = dl;
-        gDPPipeSync(dlHead++);
-        gDPSetRenderMode(dlHead++, G_RM_NOOP, G_RM_NOOP2);
-        gDPSetCycleType(dlHead++, G_CYC_FILL);
-        gDPSetDepthSource(dlHead++, G_ZS_PIXEL);
-        gDPSetDepthImage(dlHead++, gPhysicalZBuffer);
-        gDPSetColorImage(dlHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, gPhysicalZBuffer);
-        gDPSetFillColor(dlHead++,
-                        GPACK_ZDZ(G_MAXFBZ, 0) << 16 | GPACK_ZDZ(G_MAXFBZ, 0));
-        gDPFillRectangle(dlHead++, 0, BORDER_HEIGHT, SCREEN_WIDTH - 1,
-                        SCREEN_HEIGHT - 1 - BORDER_HEIGHT);
-        gDPPipeSync(dlHead++);
-        gDPSetCycleType(dlHead++, G_CYC_1CYCLE);
-        gDPSetColorImage(dlHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
-                        gPhysicalFrameBuffers[frameBufferIndex]);
-        gDPSetScissor(dlHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
-                  SCREEN_HEIGHT - BORDER_HEIGHT);
+
+        if (gPortalRenderPass == 0)
+        {
+            dl = alloc_display_list(12 * sizeof(*dl));
+            dlHead = dl;
+            gDPPipeSync(dlHead++);
+            gDPSetRenderMode(dlHead++, G_RM_NOOP, G_RM_NOOP2);
+            gDPSetCycleType(dlHead++, G_CYC_FILL);
+            gDPSetDepthSource(dlHead++, G_ZS_PIXEL);
+            gDPSetDepthImage(dlHead++, gPhysicalZBuffer);
+            gDPSetColorImage(dlHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, gPhysicalZBuffer);
+            gDPSetFillColor(dlHead++,
+                            GPACK_ZDZ(G_MAXFBZ, 0) << 16 | GPACK_ZDZ(G_MAXFBZ, 0));
+            gDPFillRectangle(dlHead++, 0, BORDER_HEIGHT, SCREEN_WIDTH - 1,
+                            SCREEN_HEIGHT - 1 - BORDER_HEIGHT);
+            gDPPipeSync(dlHead++);
+            gDPSetCycleType(dlHead++, G_CYC_1CYCLE);
+            gDPSetColorImage(dlHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
+                            gPhysicalFrameBuffers[frameBufferIndex]);
+        }
+        else
+        {
+            Vtx *portalVerts = alloc_display_list(4 * sizeof(Vtx));
+            s32 i = gPortalRenderPass + NUM_PORTALS;
+            struct PortalState *portalState = &gPortalStates[gPortalStates[i].pairedPortal];
+            // struct PortalState *portalState = &gPortalStates[i];
+
+            dlHead = dl = alloc_display_list((24) * sizeof(Gfx));
+            gDPPipeSync(dlHead++); // TODO this write of 0 to the z buffer doesn't work on jabo
+            gDPSetRenderMode(dlHead++, G_RM_NOOP, G_RM_NOOP2);
+            gDPSetCycleType(dlHead++, G_CYC_FILL);
+            gDPSetDepthSource(dlHead++, G_ZS_PIXEL);
+            gDPSetDepthImage(dlHead++, gPhysicalZBuffer);
+            gDPSetColorImage(dlHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, gPhysicalZBuffer);
+            gDPSetFillColor(dlHead++, 0);
+            gDPFillRectangle(dlHead++, 0, BORDER_HEIGHT, SCREEN_WIDTH - 1,
+                            SCREEN_HEIGHT - 1 - BORDER_HEIGHT);
+            gDPPipeSync(dlHead++);
+            gDPSetCycleType(dlHead++, G_CYC_1CYCLE);
+            gDPSetColorImage(dlHead++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
+                            gPhysicalFrameBuffers[frameBufferIndex]);
+
+            gDPPipeSync(dlHead++);
+            gDPSetRenderMode(dlHead++, RM_PORTAL_ZCLEAR(1), RM_PORTAL_ZCLEAR(2));
+            gDPSetCombineLERP(dlHead++, 0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 1);
+            gDPSetDepthSource(dlHead++, G_ZS_PRIM);
+            gDPSetPrimDepth(dlHead++, 0x7FFF, 0);
+            gSPClearGeometryMode(dlHead++, G_CULL_BACK);
+            gSPVertex(dlHead++, portalVerts, 4, 0);
+            gSP2Triangles(dlHead++, 0, 1, 2, 0x00, 2, 1, 3, 0x00);
+
+            vec3f_transform_vtx(portalState->transform, gPortalVerts[0], 1.0f, &portalVerts[0]);
+            vec3f_transform_vtx(portalState->transform, gPortalVerts[1], 1.0f, &portalVerts[1]);
+            vec3f_transform_vtx(portalState->transform, gPortalVerts[2], 1.0f, &portalVerts[2]);
+            vec3f_transform_vtx(portalState->transform, gPortalVerts[3], 1.0f, &portalVerts[3]);
+
+            gSPSetGeometryMode(dlHead++, G_CULL_BACK);
+            gDPSetDepthSource(dlHead++, G_ZS_PIXEL);
+        }
         gSPEndDisplayList(dlHead++);
     }
     return dl;
@@ -263,28 +315,37 @@ Gfx *geo_zbuffer_clear(s32 callContext, UNUSED struct GraphNode *node, UNUSED Ma
 
 struct PortalState gPortalStates[NUM_PORTALS] = {
     {
-        {{1.0f, 0.0f, 0.0f, 0.0f},
+        .transform = {
+         {1.0f, 0.0f, 0.0f, 0.0f},
          {0.0f, 1.0f, 0.0f, 0.0f},
          {0.0f, 0.0f, 1.0f, 0.0f},
-         {0.0f, 0.0f, 0.0f, 1.0f}},
-        1,
-        1
+         {0.0f, 0.0f, 0.0f, 1.0f}
+        },
+        .inverseTransform = {
+         {1.0f, 0.0f, 0.0f, 0.0f},
+         {0.0f, 1.0f, 0.0f, 0.0f},
+         {0.0f, 0.0f, 1.0f, 0.0f},
+         {0.0f, 0.0f, 0.0f, 1.0f}
+        },
+        .pairedPortal = 1,
+        .active = 0
     },
     {
-        {{1.0f, 0.0f, 0.0f, 0.0f},
+        .transform = {
+         {1.0f, 0.0f, 0.0f, 0.0f},
          {0.0f, 1.0f, 0.0f, 0.0f},
          {0.0f, 0.0f, 1.0f, 0.0f},
-         {0.0f, 0.0f, 0.0f, 1.0f}},
-        0,
-        0
-    }
-};
-
-Vec3f gPortalVerts[4] = {
-    {-100, -100, 0},
-    { 100, -100, 0},
-    {-100,  100, 0},
-    { 100,  100, 0},
+         {0.0f, 0.0f, 0.0f, 1.0f}
+        },
+        .inverseTransform = {
+         {1.0f, 0.0f, 0.0f, 0.0f},
+         {0.0f, 1.0f, 0.0f, 0.0f},
+         {0.0f, 0.0f, 1.0f, 0.0f},
+         {0.0f, 0.0f, 0.0f, 1.0f}
+        },
+        .pairedPortal = 0,
+        .active = 0
+    },
 };
 
 #define	RM_PORTAL(clk) \
@@ -296,11 +357,11 @@ Gfx *geo_draw_portals(s32 callContext, UNUSED struct GraphNode *node, UNUSED f32
     Gfx *dl = NULL; 
     Gfx *dlHead;
     s32 i;
-    if (callContext == GEO_CONTEXT_RENDER) {
-        dlHead = dl = alloc_display_list((6 + 2 * 2) * sizeof(Gfx));
+    if (callContext == GEO_CONTEXT_RENDER && gPortalRenderPass == 0) {
+        dlHead = dl = alloc_display_list((6 + 2 * 4) * sizeof(Gfx));
         gDPPipeSync(dlHead++);
         gDPSetRenderMode(dlHead++, RM_PORTAL(1), RM_PORTAL(2));
-        gDPSetCombineLERP(dlHead++, 0, 0, 0, 1,  0, 0, 0, 0,  0, 0, 0, 1,  0, 0, 0, 0);
+        gDPSetCombineLERP(dlHead++, 0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0);
         gSPClearGeometryMode(dlHead++, G_CULL_BACK);
         for (i = 0; i < NUM_PORTALS; i++)
         {
@@ -308,6 +369,15 @@ Gfx *geo_draw_portals(s32 callContext, UNUSED struct GraphNode *node, UNUSED f32
             {
                 Vtx *portalVerts = alloc_display_list(4 * sizeof(Vtx));
 
+                gDPPipeSync(dlHead++);
+                // if (i == 0)
+                // {
+                //     gDPSetEnvColor(dlHead++, 255, 128, 0, 64);
+                // }
+                // else
+                // {
+                //     gDPSetEnvColor(dlHead++, 0, 0, 255, 64);
+                // }
                 gSPVertex(dlHead++, portalVerts, 4, 0);
                 gSP2Triangles(dlHead++, 0, 1, 2, 0x00, 2, 1, 3, 0x00);
 

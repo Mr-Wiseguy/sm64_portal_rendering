@@ -306,10 +306,9 @@ static void geo_process_switch(struct GraphNodeSwitchCase *node) {
     }
 }
 
-extern s32 gPortalRenderPass;
+#include "portal.h"
 
 u8 newCameraNext = 1;
-
 Mat4 gCameraTransform;
 
 /**
@@ -334,27 +333,50 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
         mtxf_mul(gCameraTransform, cameraTransform, gMatStack[gMatStackIndex]);
     }
 
-    if (gPortalRenderPass != 0)
+    if (gPortalRenderPass != 0 && !node->isPortal)
     {
-        Vec3f realPos;
-        Vec3f realFocus;
-        vec3f_copy(realPos, node->pos);
-        vec3f_copy(realFocus, node->focus);
-        // realPos[0] += 1000 * gPortalRenderPass;
-        // realPos[1] += 200;
-        // realFocus[0] += 1000 * gPortalRenderPass;
-        // realFocus[1] += 200;
-        realPos[0] += -500 * (gPortalRenderPass * 2 + 3);
-        realFocus[0] += -500 * (gPortalRenderPass * 2 + 3);
-        
-        mtxf_lookat(cameraTransform, realPos, realFocus, node->roll);
-        mtxf_mul(gMatStack[gMatStackIndex + 1], cameraTransform, gMatStack[gMatStackIndex]);
+        struct PortalState *curPortalState = &gPortalStates[gPortalRenderPass + NUM_PORTALS];
+        Mat4 portalCamMatrix, portalCamMatrix2;
+
+        if (!curPortalState->active)
+        {
+            return;
+        }
+
+        if (!gPortalStates[curPortalState->pairedPortal].active)
+        {
+            gDPPipeSync(gDisplayListHead++);
+            gDPSetRenderMode(gDisplayListHead++, G_RM_NOOP, G_RM_NOOP2);
+            gDPSetCycleType(gDisplayListHead++, G_CYC_FILL);
+            gDPSetFillColor(gDisplayListHead++, GPACK_RGBA5551(0, 0, 0, 1) << 16 | GPACK_RGBA5551(0, 0, 0, 1));
+            gDPFillRectangle(gDisplayListHead++, 0, BORDER_HEIGHT, SCREEN_WIDTH - 1,
+                            SCREEN_HEIGHT - 1 - BORDER_HEIGHT);
+            gDPPipeSync(gDisplayListHead++);
+            gDPSetCycleType(gDisplayListHead++, G_CYC_1CYCLE);
+            gDPSetRenderMode(gDisplayListHead++, renderModeTable_1Cycle[1].modes[LAYER_OPAQUE], renderModeTable_2Cycle[1].modes[LAYER_OPAQUE]);
+            return;
+        }
+
+        mtxf_mul(portalCamMatrix, curPortalState->transform, gPortalStates[curPortalState->pairedPortal].inverseTransform);
+        mtxf_mul(portalCamMatrix2, portalCamMatrix, gCameraTransform);
+
+        // mtxf_mul(portalCamMatrix, gPortalStates[curPortalState->pairedPortal].transform, curPortalState->inverseTransform);
+        // mtxf_mul(portalCamMatrix2, portalCamMatrix, gCameraTransform);
+        mtxf_mul(gMatStack[gMatStackIndex + 1], portalCamMatrix2, gMatStack[gMatStackIndex]);
     }
     else
     {
         mtxf_copy(gMatStack[gMatStackIndex + 1], gCameraTransform);
-        newCameraNext = 1;
+        if (gPortalRenderPass == 0)
+        {
+            newCameraNext = 1;
+        }
     }
+
+    // if (gPortalRenderPass != 0)
+    // {
+    //     return;
+    // }
 
     gMatStackIndex++;
     mtxf_to_mtx(mtx, gMatStack[gMatStackIndex]);
@@ -1069,8 +1091,6 @@ void geo_process_node_and_siblings(struct GraphNode *firstNode) {
     } while (iterateChildren && (curGraphNode = curGraphNode->next) != firstNode);
 }
 
-#include "portal.h"
-
 s32 gPortalRenderPass;
 
 /**
@@ -1085,7 +1105,7 @@ void geo_process_root(struct GraphNodeRoot *node, Vp *b, Vp *c, s32 clearColor) 
         gDisplayListHeap = alloc_only_pool_init(main_pool_available() - sizeof(struct AllocOnlyPool),
                                                 MEMORY_POOL_LEFT);
 
-        for (gPortalRenderPass = -1; gPortalRenderPass <= 0; gPortalRenderPass++)
+        for (gPortalRenderPass = -NUM_PORTALS; gPortalRenderPass <= 0; gPortalRenderPass++)
         {
             Mtx *initialMatrix;
             Vp *viewport;

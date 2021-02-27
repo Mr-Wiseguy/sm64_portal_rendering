@@ -1713,6 +1713,18 @@ s32 execute_mario_action(UNUSED struct Object *o) {
             vec3f_copy(pos, gMarioState->pos);
             pos[1] += 100;
             mtxf_rotate_xyz_and_translate(gPortalStates[0].transform, pos, gMarioState->faceAngle);
+            mtxf_inverse_rotate_translate(gPortalStates[0].transform, gPortalStates[0].inverseTransform);
+            gPortalStates[0].active = 1;
+        }
+
+        if (gPlayer1Controller->buttonPressed & D_JPAD)
+        {
+            Vec3f pos;
+            vec3f_copy(pos, gMarioState->pos);
+            pos[1] += 100;
+            mtxf_rotate_xyz_and_translate(gPortalStates[1].transform, pos, gMarioState->faceAngle);
+            mtxf_inverse_rotate_translate(gPortalStates[1].transform, gPortalStates[1].inverseTransform);
+            gPortalStates[1].active = 1;
         }
 
         // If Mario is OOB, stop executing actions.
