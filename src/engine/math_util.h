@@ -76,4 +76,9 @@ void vec3f_transform(Mat4 mat, Vec3f in, f32 w, Vec3f out);
 void vec3f_transform_vtx(Mat4 mat, Vec3f in, f32 w, Vtx *out);
 void mtxf_inverse_rotate_translate(Mat4 in, Mat4 out);
 
+void vec4f_scale(Vec4f dest, Vec4f src, f32 scale);
+f32 vec4f_dot(Vec4f a, Vec4f b);
+f32 vec3f_dot(Vec3f a, Vec3f b);
+void make_oblique(Mat4 toModify, Vec4f clipPlane);
+
 #endif // MATH_UTIL_H

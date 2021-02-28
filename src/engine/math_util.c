@@ -943,3 +943,53 @@ void mtxf_inverse_rotate_translate(Mat4 in, Mat4 out) {
     mtxf_translate(invTranslate, negTranslate);
     mtxf_mul(out, invTranslate, invRot);
 }
+
+void vec4f_scale(Vec4f dest, Vec4f src, f32 scale) {
+    dest[0] = src[0] * scale;
+    dest[1] = src[1] * scale;
+    dest[2] = src[2] * scale;
+    dest[3] = src[3] * scale;
+}
+
+f32 vec4f_dot(Vec4f a, Vec4f b)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
+}
+
+f32 vec3f_dot(Vec3f a, Vec3f b)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+// http://www.terathon.com/code/oblique.html
+inline float sgn(float a)
+{
+    if (a > 0.0F) return (1.0F);
+    if (a < 0.0F) return (-1.0F);
+    return (0.0F);
+}
+
+void make_oblique(Mat4 toModify, Vec4f clipPlane)
+{
+    Vec4f q;
+    Vec4f c;
+    
+    // Calculate the clip-space corner point opposite the clipping plane
+    // as (sgn(clipPlane.x), sgn(clipPlane.y), 1, 1) and
+    // transform it into camera space by multiplying it
+    // by the inverse of the projection matrix
+    
+    q[0] = sgn(clipPlane[0]) / toModify[0][0];
+    q[1] = sgn(clipPlane[1]) / toModify[1][1];
+    q[2] = -1.0f;
+    q[3] = (1.0f + toModify[2][2]) / toModify[3][2];
+    
+    // Calculate the scaled plane vector
+    vec4f_scale(c, clipPlane, (2.0F / vec4f_dot(clipPlane, q)));
+    
+    // Replace the third row of the projection matrix
+    toModify[0][2] = c[0];
+    toModify[1][2] = c[1];
+    toModify[2][2] = c[2] + 1.0F;
+    toModify[3][2] = c[3];
+}

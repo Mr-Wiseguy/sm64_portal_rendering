@@ -234,6 +234,10 @@ static void geo_process_ortho_projection(struct GraphNodeOrthoProjection *node) 
     }
 }
 
+Mat4 gProjectionMatrix;
+
+#include "portal.h"
+
 /**
  * Process a perspective projection node.
  */
@@ -250,8 +254,8 @@ static void geo_process_perspective(struct GraphNodePerspective *node) {
 #else
         f32 aspect = (f32) gCurGraphNodeRoot->width / (f32) gCurGraphNodeRoot->height;
 #endif
-
-        guPerspective(mtx, &perspNorm, node->fov, aspect, node->near, node->far, 1.0f);
+        guPerspectiveF(gProjectionMatrix, &perspNorm, node->fov, aspect, node->near, node->far, 1.0f);
+        guMtxF2L(gProjectionMatrix, mtx);
         gSPPerspNormalize(gDisplayListHead++, perspNorm);
 
         gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(mtx), G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
@@ -306,8 +310,6 @@ static void geo_process_switch(struct GraphNodeSwitchCase *node) {
     }
 }
 
-#include "portal.h"
-
 u8 newCameraNext = 1;
 Mat4 gCameraTransform;
 
@@ -324,8 +326,6 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
     }
     mtxf_rotate_xy(rollMtx, node->rollScreen);
 
-    gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(rollMtx), G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);
-
     if (newCameraNext)
     {
         newCameraNext = 0;
@@ -336,14 +336,51 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
     if (gPortalRenderPass != 0 && !node->isPortal)
     {
         struct PortalState *curPortalState = &gPortalStates[gPortalRenderPass + NUM_PORTALS];
+        struct PortalState *pairedPortalState = &gPortalStates[curPortalState->pairedPortal];
         Mat4 portalCamMatrix, portalCamMatrix2;
+        Mtx *newPersp = alloc_display_list(sizeof(Mtx));
+        Vec4f clipPlane;
+        Vec3f portalWorldPos;
+        Vec3f portalWorldDir;
+        Vec3f portalPos;
 
         if (!curPortalState->active)
         {
             return;
         }
+    
+        char text[50];
 
-        if (!gPortalStates[curPortalState->pairedPortal].active)
+        portalWorldPos[0] = pairedPortalState->transform[3][0];
+        portalWorldPos[1] = pairedPortalState->transform[3][1];
+        portalWorldPos[2] = pairedPortalState->transform[3][2];
+
+        portalWorldDir[0] = pairedPortalState->transform[2][0];
+        portalWorldDir[1] = pairedPortalState->transform[2][1];
+        portalWorldDir[2] = pairedPortalState->transform[2][2];
+
+        vec3f_transform(gCameraTransform, portalWorldPos, 1.0f, portalPos);
+        vec3f_rotate(gCameraTransform, portalWorldDir, &clipPlane[0]);
+        vec3f_normalize(&clipPlane[0]);
+
+        clipPlane[3] = -vec3f_dot(&clipPlane[0], portalPos);
+
+        if (clipPlane[2] >= 0.0f)
+        {
+            clipPlane[0] = -clipPlane[0];
+            clipPlane[1] = -clipPlane[1];
+            clipPlane[2] = -clipPlane[2];
+            clipPlane[3] = -clipPlane[3];
+        }
+
+        if (clipPlane[3] <= 0.0f)
+        {
+            make_oblique(gProjectionMatrix, clipPlane);
+            guMtxF2L(gProjectionMatrix, newPersp);
+            gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(newPersp), G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
+        }
+
+        if (!pairedPortalState->active)
         {
             gDPPipeSync(gDisplayListHead++);
             gDPSetRenderMode(gDisplayListHead++, G_RM_NOOP, G_RM_NOOP2);
@@ -357,10 +394,10 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
             return;
         }
 
-        mtxf_mul(portalCamMatrix, curPortalState->transform, gPortalStates[curPortalState->pairedPortal].inverseTransform);
+        mtxf_mul(portalCamMatrix, curPortalState->transform, pairedPortalState->inverseTransform);
         mtxf_mul(portalCamMatrix2, portalCamMatrix, gCameraTransform);
 
-        // mtxf_mul(portalCamMatrix, gPortalStates[curPortalState->pairedPortal].transform, curPortalState->inverseTransform);
+        // mtxf_mul(portalCamMatrix, pairedPortalState->transform, curPortalState->inverseTransform);
         // mtxf_mul(portalCamMatrix2, portalCamMatrix, gCameraTransform);
         mtxf_mul(gMatStack[gMatStackIndex + 1], portalCamMatrix2, gMatStack[gMatStackIndex]);
     }
@@ -372,6 +409,8 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
             newCameraNext = 1;
         }
     }
+
+    gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(rollMtx), G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);
 
     // if (gPortalRenderPass != 0)
     // {
