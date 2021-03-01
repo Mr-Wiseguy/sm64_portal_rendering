@@ -337,12 +337,14 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
     {
         struct PortalState *curPortalState = &gPortalStates[gPortalRenderPass + NUM_PORTALS];
         struct PortalState *pairedPortalState = &gPortalStates[curPortalState->pairedPortal];
-        Mat4 portalCamMatrix, portalCamMatrix2;
         Mtx *newPersp = alloc_display_list(sizeof(Mtx));
         Vec4f clipPlane;
         Vec3f portalWorldPos;
         Vec3f portalWorldDir;
         Vec3f portalPos;
+        Vec3f portalCameraPos;
+        Vec3f portalCameraFocusPos;
+        Vec3f temp;
 
         if (!curPortalState->active)
         {
@@ -393,13 +395,14 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
             gDPSetRenderMode(gDisplayListHead++, renderModeTable_1Cycle[1].modes[LAYER_OPAQUE], renderModeTable_2Cycle[1].modes[LAYER_OPAQUE]);
             return;
         }
+        vec3f_transform(pairedPortalState->inverseTransform, node->pos, 1.0f, temp);
+        vec3f_transform(curPortalState->transform, temp, 1.0f, portalCameraPos);
 
-        mtxf_mul(portalCamMatrix, curPortalState->transform, pairedPortalState->inverseTransform);
-        mtxf_mul(portalCamMatrix2, portalCamMatrix, gCameraTransform);
-
-        // mtxf_mul(portalCamMatrix, pairedPortalState->transform, curPortalState->inverseTransform);
-        // mtxf_mul(portalCamMatrix2, portalCamMatrix, gCameraTransform);
-        mtxf_mul(gMatStack[gMatStackIndex + 1], portalCamMatrix2, gMatStack[gMatStackIndex]);
+        vec3f_transform(pairedPortalState->inverseTransform, node->focus, 1.0f, temp);
+        vec3f_transform(curPortalState->transform, temp, 1.0f, portalCameraFocusPos);
+        
+        mtxf_lookat(cameraTransform, portalCameraPos, portalCameraFocusPos, node->roll);
+        mtxf_mul(gMatStack[gMatStackIndex + 1], cameraTransform, gMatStack[gMatStackIndex]);
     }
     else
     {
