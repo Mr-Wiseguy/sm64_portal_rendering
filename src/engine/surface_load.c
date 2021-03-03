@@ -14,6 +14,7 @@
 #include "game/mario.h"
 #include "game/object_list_processor.h"
 #include "surface_load.h"
+#include "engine/math_util.h"
 
 s32 unused8038BE90;
 

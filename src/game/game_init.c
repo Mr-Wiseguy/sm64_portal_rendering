@@ -19,6 +19,7 @@
 #include "segment2.h"
 #include "segment_symbols.h"
 #include "rumble_init.h"
+#include "engine/math_util.h"
 #ifdef HVQM
 #include <hvqm/hvqm.h>
 #endif
@@ -29,7 +30,7 @@
 #ifdef SRAM
 #include "sram.h"
 #endif
-#include <prevent_bss_reordering.h>
+#include <prevent_bss_reordering.h>"
 
 // FIXME: I'm not sure all of these variables belong in this file, but I don't
 // know of a good way to split them

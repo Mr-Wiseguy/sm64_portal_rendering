@@ -12,6 +12,7 @@
 #include "game/camera.h"
 #include "seq_ids.h"
 #include "dialog_ids.h"
+#include "src/engine/math_util.h"
 
 #if defined(VERSION_EU) || defined(VERSION_SH)
 #define EU_FLOAT(x) x##f

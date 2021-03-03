@@ -238,7 +238,6 @@ struct GraphNode_802A45E4 {
 
 void obj_set_hitbox(struct Object *obj, struct ObjectHitbox *hitbox);
 s32 signum_positive(s32 x);
-f32 absf(f32 x);
 s32 absi(s32 a0);
 s32 cur_obj_wait_then_blink(s32 timeUntilBlinking, s32 numBlinks);
 s32 cur_obj_is_mario_ground_pounding_platform(void);
@@ -293,6 +292,13 @@ void enable_time_stop_including_mario(void);
 void disable_time_stop_including_mario(void);
 s32 cur_obj_check_interacted(void);
 void cur_obj_spawn_loot_blue_coin(void);
+
+static __inline__ f32 absf(f32 in)
+{
+    f32 out;
+    __asm__("abs.s %0,%1" : "=f" (out) : "f" (in));
+    return out;
+}
 
 #ifndef VERSION_JP
 void cur_obj_spawn_star_at_y_offset(f32 targetX, f32 targetY, f32 targetZ, f32 offsetY);

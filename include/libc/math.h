@@ -8,6 +8,6 @@ double sin(double);
 float cosf(float);
 double cos(double);
 
-float sqrtf(float);
+// float sqrtf(float);
 
 #endif

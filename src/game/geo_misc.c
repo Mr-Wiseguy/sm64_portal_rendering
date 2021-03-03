@@ -273,7 +273,7 @@ Gfx *geo_zbuffer_clear(s32 callContext, UNUSED struct GraphNode *node, UNUSED Ma
         {
             Vtx *portalVerts = alloc_display_list(4 * sizeof(Vtx));
             s32 i = gPortalRenderPass + NUM_PORTALS;
-            struct PortalState *portalState = &gPortalStates[gPortalStates[i].pairedPortal];
+            struct PortalState *portalState = &gPortalStates[i];
             // struct PortalState *portalState = &gPortalStates[i];
 
             dlHead = dl = alloc_display_list((24) * sizeof(Gfx));
@@ -381,10 +381,10 @@ Gfx *geo_draw_portals(s32 callContext, UNUSED struct GraphNode *node, UNUSED f32
                 gSPVertex(dlHead++, portalVerts, 4, 0);
                 gSP2Triangles(dlHead++, 0, 1, 2, 0x00, 2, 1, 3, 0x00);
 
-                vec3f_transform_vtx(gPortalStates[i].transform, gPortalVerts[0], 1.0f, &portalVerts[0]);
-                vec3f_transform_vtx(gPortalStates[i].transform, gPortalVerts[1], 1.0f, &portalVerts[1]);
-                vec3f_transform_vtx(gPortalStates[i].transform, gPortalVerts[2], 1.0f, &portalVerts[2]);
-                vec3f_transform_vtx(gPortalStates[i].transform, gPortalVerts[3], 1.0f, &portalVerts[3]);
+                vec3f_to_vec3s(portalVerts[0].v.ob, gPortalStates[i].worldCoords[0]);
+                vec3f_to_vec3s(portalVerts[1].v.ob, gPortalStates[i].worldCoords[1]);
+                vec3f_to_vec3s(portalVerts[2].v.ob, gPortalStates[i].worldCoords[2]);
+                vec3f_to_vec3s(portalVerts[3].v.ob, gPortalStates[i].worldCoords[3]);
             }
         }
         gSPSetGeometryMode(dlHead++, G_CULL_BACK);

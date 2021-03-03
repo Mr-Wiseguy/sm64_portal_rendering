@@ -414,6 +414,8 @@ void render_hud_camera_status(void) {
     gSPDisplayList(gDisplayListHead++, dl_hud_img_end);
 }
 
+#include "portal.h"
+
 /**
  * Render HUD strings using hudDisplayFlags with it's render functions,
  * excluding the cannon reticle which detects a camera preset for it.
@@ -474,6 +476,25 @@ void render_hud(void) {
 
         if (hudDisplayFlags & HUD_DISPLAY_FLAG_TIMER) {
             render_hud_timer();
+        }
+
+        {
+            // s32 i;
+            // gDPPipeSync(gDisplayListHead++);
+            // gDPSetEnvColor(gDisplayListHead++, 255, 0, 0, 255);
+            // gDPSetCombineLERP(gDisplayListHead++, 0, 0, 0, ENVIRONMENT, 0, 0, 0, 1, 0, 0, 0, ENVIRONMENT, 0, 0, 0, 1);
+            // // gDPSetFillColor(gDisplayListHead++, GPACK_RGBA5551(255, 0, 0, 1) << 16 | GPACK_RGBA5551(255, 0, 0, 1));
+            // for (i = 0; i < NUM_PORTALS; i++)
+            // {
+            //     struct PortalState *p = &gPortalStates[i];
+            //     if (p->active)
+            //     {
+            //         gDPFillRectangle(gDisplayListHead++, p->minX, p->minY, p->maxX, p->minY + 1);
+            //         gDPFillRectangle(gDisplayListHead++, p->maxX, p->minY, p->maxX + 1, p->maxY);
+            //         gDPFillRectangle(gDisplayListHead++, p->minX, p->minY + 1, p->minX + 1, p->maxY);
+            //         gDPFillRectangle(gDisplayListHead++, p->minX, p->maxY, p->maxX + 1, p->maxY + 1);
+            //     }
+            // }
         }
     }
 }

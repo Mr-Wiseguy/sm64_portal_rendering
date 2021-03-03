@@ -121,11 +121,12 @@ Gfx UNUSED *geo_obj_transparency_something(s32 callContext, struct GraphNode *no
 /**
  * An absolute value function.
  */
-f32 absf_2(f32 f) {
-    if (f < 0) {
-        f *= -1.0f;
-    }
-    return f;
+
+static __inline__ f32 absf_2(f32 in)
+{
+    f32 out;
+    __asm__("abs.s %0,%1" : "=f" (out) : "f" (in));
+    return out;
 }
 
 /**

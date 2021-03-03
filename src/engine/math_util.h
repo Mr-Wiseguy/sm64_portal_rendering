@@ -42,7 +42,7 @@ void *vec3s_add(Vec3s dest, Vec3s a);
 void *vec3s_sum(Vec3s dest, Vec3s a, Vec3s b);
 void *vec3s_sub(Vec3s dest, Vec3s a);
 void *vec3s_to_vec3f(Vec3f dest, Vec3s a);
-void *vec3f_to_vec3s(Vec3s dest, Vec3f a);
+void vec3f_to_vec3s(Vec3s dest, Vec3f a);
 void *find_vector_perpendicular_to_plane(Vec3f dest, Vec3f a, Vec3f b, Vec3f c);
 void *vec3f_cross(Vec3f dest, Vec3f a, Vec3f b);
 void *vec3f_normalize(Vec3f dest);
@@ -73,12 +73,31 @@ s32 anim_spline_poll(Vec3f result);
 
 void vec3f_rotate(Mat4 mat, Vec3f in, Vec3f out);
 void vec3f_transform(Mat4 mat, Vec3f in, f32 w, Vec3f out);
+void vec3f_transform_vec4f(Mat4 mat, Vec3f in, f32 w, Vec4f out);
+void vec4f_transform(Mat4 mat, Vec4f in, Vec4f out);
 void vec3f_transform_vtx(Mat4 mat, Vec3f in, f32 w, Vtx *out);
 void mtxf_inverse_rotate_translate(Mat4 in, Mat4 out);
+void ndc_to_screen(Vec3f in, Vec3s out);
 
 void vec4f_scale(Vec4f dest, Vec4f src, f32 scale);
 f32 vec4f_dot(Vec4f a, Vec4f b);
 f32 vec3f_dot(Vec3f a, Vec3f b);
 void make_oblique(Mat4 toModify, Vec4f clipPlane);
+
+static __inline__ s32 roundf(f32 in)
+{
+    f32 tmp;
+    s32 out;
+    __asm__("round.w.s %0,%1" : "=f" (tmp) : "f" (in));
+    __asm__("mfc1 %0,%1" : "=r" (out) : "f" (tmp));
+    return out;
+}
+
+static __inline__ f32 sqrtf(f32 in)
+{
+    f32 out;
+    __asm__("sqrt.s %0,%1" : "=f" (out) : "f" (in));
+    return out;
+}
 
 #endif // MATH_UTIL_H

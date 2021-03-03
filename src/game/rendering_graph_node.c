@@ -312,6 +312,7 @@ static void geo_process_switch(struct GraphNodeSwitchCase *node) {
 
 u8 newCameraNext = 1;
 Mat4 gCameraTransform;
+Mat4 gVPMatrix;
 
 /**
  * Process a camera node.
@@ -328,9 +329,93 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
 
     if (newCameraNext)
     {
+        s32 portalIndex;
         newCameraNext = 0;
         mtxf_lookat(cameraTransform, node->pos, node->focus, node->roll);
         mtxf_mul(gCameraTransform, cameraTransform, gMatStack[gMatStackIndex]);
+        // mtxf_mul(gVPMatrix, gProjectionMatrix, gCameraTransform);
+
+        for (portalIndex = 0; portalIndex < NUM_PORTALS; portalIndex++)
+        {
+            struct PortalState *curPortalState = &gPortalStates[portalIndex];
+            if (curPortalState->active)
+            {
+                Vec4f temp[4];
+                vec3f_transform_vec4f(curPortalState->transform, gPortalVerts[0], 1.0f, curPortalState->worldCoords[0]);
+                vec3f_transform_vec4f(curPortalState->transform, gPortalVerts[1], 1.0f, curPortalState->worldCoords[1]);
+                vec3f_transform_vec4f(curPortalState->transform, gPortalVerts[2], 1.0f, curPortalState->worldCoords[2]);
+                vec3f_transform_vec4f(curPortalState->transform, gPortalVerts[3], 1.0f, curPortalState->worldCoords[3]);
+                
+                // vec4f_transform(gVPMatrix, curPortalState->worldCoords[0], curPortalState->normDevCoords[0]);
+                // vec4f_transform(gVPMatrix, curPortalState->worldCoords[1], curPortalState->normDevCoords[1]);
+                // vec4f_transform(gVPMatrix, curPortalState->worldCoords[2], curPortalState->normDevCoords[2]);
+                // vec4f_transform(gVPMatrix, curPortalState->worldCoords[3], curPortalState->normDevCoords[3]);
+
+                // curPortalState->normDevCoords[0][0] /= curPortalState->normDevCoords[0][2];
+                // curPortalState->normDevCoords[0][1] /= curPortalState->normDevCoords[0][2];
+
+                // curPortalState->normDevCoords[1][0] /= curPortalState->normDevCoords[1][2];
+                // curPortalState->normDevCoords[1][1] /= curPortalState->normDevCoords[1][2];
+
+                // curPortalState->normDevCoords[2][0] /= curPortalState->normDevCoords[2][2];
+                // curPortalState->normDevCoords[2][1] /= curPortalState->normDevCoords[2][2];
+
+                // curPortalState->normDevCoords[3][0] /= curPortalState->normDevCoords[3][2];
+                // curPortalState->normDevCoords[3][1] /= curPortalState->normDevCoords[3][2];
+                
+                
+                vec4f_transform(gCameraTransform, curPortalState->worldCoords[0], temp[0]);
+                vec4f_transform(gCameraTransform, curPortalState->worldCoords[1], temp[1]);
+                vec4f_transform(gCameraTransform, curPortalState->worldCoords[2], temp[2]);
+                vec4f_transform(gCameraTransform, curPortalState->worldCoords[3], temp[3]);
+                
+                
+                vec4f_transform(gProjectionMatrix, temp[0], curPortalState->normDevCoords[0]);
+                vec4f_transform(gProjectionMatrix, temp[1], curPortalState->normDevCoords[1]);
+                vec4f_transform(gProjectionMatrix, temp[2], curPortalState->normDevCoords[2]);
+                vec4f_transform(gProjectionMatrix, temp[3], curPortalState->normDevCoords[3]);
+
+                curPortalState->normDevCoords[0][0] /= curPortalState->normDevCoords[0][3];
+                curPortalState->normDevCoords[0][1] /= curPortalState->normDevCoords[0][3];
+
+                curPortalState->normDevCoords[1][0] /= curPortalState->normDevCoords[1][3];
+                curPortalState->normDevCoords[1][1] /= curPortalState->normDevCoords[1][3];
+
+                curPortalState->normDevCoords[2][0] /= curPortalState->normDevCoords[2][3];
+                curPortalState->normDevCoords[2][1] /= curPortalState->normDevCoords[2][3];
+
+                curPortalState->normDevCoords[3][0] /= curPortalState->normDevCoords[3][3];
+                curPortalState->normDevCoords[3][1] /= curPortalState->normDevCoords[3][3];
+
+                ndc_to_screen(curPortalState->normDevCoords[0], curPortalState->screenCoords[0]);
+                ndc_to_screen(curPortalState->normDevCoords[1], curPortalState->screenCoords[1]);
+                ndc_to_screen(curPortalState->normDevCoords[2], curPortalState->screenCoords[2]);
+                ndc_to_screen(curPortalState->normDevCoords[3], curPortalState->screenCoords[3]);
+                
+                curPortalState->minX = MIN(MIN(curPortalState->screenCoords[0][0], curPortalState->screenCoords[1][0]), MIN(curPortalState->screenCoords[2][0], curPortalState->screenCoords[3][0]));
+                curPortalState->minY = MIN(MIN(curPortalState->screenCoords[0][1], curPortalState->screenCoords[1][1]), MIN(curPortalState->screenCoords[2][1], curPortalState->screenCoords[3][1]));
+                curPortalState->maxX = MAX(MAX(curPortalState->screenCoords[0][0], curPortalState->screenCoords[1][0]), MAX(curPortalState->screenCoords[2][0], curPortalState->screenCoords[3][0]));
+                curPortalState->maxY = MAX(MAX(curPortalState->screenCoords[0][1], curPortalState->screenCoords[1][1]), MAX(curPortalState->screenCoords[2][1], curPortalState->screenCoords[3][1]));
+
+
+                if (curPortalState->minX < 1)
+                {
+                    curPortalState->minX = 1;
+                }
+                if (curPortalState->maxX > SCREEN_WIDTH - 1)
+                {
+                    curPortalState->maxX = SCREEN_WIDTH - 1;
+                }
+                if (curPortalState->minY < 1)
+                {
+                    curPortalState->minY = 1;
+                }
+                if (curPortalState->maxY > SCREEN_HEIGHT - 1)
+                {
+                    curPortalState->maxY = SCREEN_HEIGHT - 1;
+                }
+            }
+        }
     }
 
     if (gPortalRenderPass != 0 && !node->isPortal)
@@ -350,16 +435,14 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
         {
             return;
         }
-    
-        char text[50];
 
-        portalWorldPos[0] = pairedPortalState->transform[3][0];
-        portalWorldPos[1] = pairedPortalState->transform[3][1];
-        portalWorldPos[2] = pairedPortalState->transform[3][2];
+        portalWorldPos[0] = curPortalState->transform[3][0];
+        portalWorldPos[1] = curPortalState->transform[3][1];
+        portalWorldPos[2] = curPortalState->transform[3][2];
 
-        portalWorldDir[0] = pairedPortalState->transform[2][0];
-        portalWorldDir[1] = pairedPortalState->transform[2][1];
-        portalWorldDir[2] = pairedPortalState->transform[2][2];
+        portalWorldDir[0] = curPortalState->transform[2][0];
+        portalWorldDir[1] = curPortalState->transform[2][1];
+        portalWorldDir[2] = curPortalState->transform[2][2];
 
         vec3f_transform(gCameraTransform, portalWorldPos, 1.0f, portalPos);
         vec3f_rotate(gCameraTransform, portalWorldDir, &clipPlane[0]);
@@ -395,14 +478,16 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
             gDPSetRenderMode(gDisplayListHead++, renderModeTable_1Cycle[1].modes[LAYER_OPAQUE], renderModeTable_2Cycle[1].modes[LAYER_OPAQUE]);
             return;
         }
-        vec3f_transform(pairedPortalState->inverseTransform, node->pos, 1.0f, temp);
-        vec3f_transform(curPortalState->transform, temp, 1.0f, portalCameraPos);
+        vec3f_transform(curPortalState->inverseTransform, node->pos, 1.0f, temp);
+        vec3f_transform(pairedPortalState->transform, temp, 1.0f, portalCameraPos);
 
-        vec3f_transform(pairedPortalState->inverseTransform, node->focus, 1.0f, temp);
-        vec3f_transform(curPortalState->transform, temp, 1.0f, portalCameraFocusPos);
+        vec3f_transform(curPortalState->inverseTransform, node->focus, 1.0f, temp);
+        vec3f_transform(pairedPortalState->transform, temp, 1.0f, portalCameraFocusPos);
         
         mtxf_lookat(cameraTransform, portalCameraPos, portalCameraFocusPos, node->roll);
         mtxf_mul(gMatStack[gMatStackIndex + 1], cameraTransform, gMatStack[gMatStackIndex]);
+
+        gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, curPortalState->minX - 1, curPortalState->minY - 1, curPortalState->maxX + 1,  curPortalState->maxY + 1);
     }
     else
     {
@@ -411,6 +496,8 @@ static void geo_process_camera(struct GraphNodeCamera *node) {
         {
             newCameraNext = 1;
         }
+        gDPSetScissor(gDisplayListHead++, G_SC_NON_INTERLACE, 0, BORDER_HEIGHT, SCREEN_WIDTH,
+                      SCREEN_HEIGHT - BORDER_HEIGHT);
     }
 
     gSPMatrix(gDisplayListHead++, VIRTUAL_TO_PHYSICAL(rollMtx), G_MTX_PROJECTION | G_MTX_MUL | G_MTX_NOPUSH);

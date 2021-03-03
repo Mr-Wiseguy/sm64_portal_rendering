@@ -4,6 +4,7 @@
 #include "area.h"
 #include "engine/graph_node.h"
 #include "engine/surface_collision.h"
+#include "engine/math_util.h"
 #include "game_init.h"
 #include "geo_misc.h"
 #include "levels/castle_inside/header.h"

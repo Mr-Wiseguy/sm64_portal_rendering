@@ -2142,14 +2142,6 @@ s32 signum_positive(s32 x) {
     }
 }
 
-f32 absf(f32 x) {
-    if (x >= 0) {
-        return x;
-    } else {
-        return -x;
-    }
-}
-
 s32 absi(s32 x) {
     if (x >= 0) {
         return x;

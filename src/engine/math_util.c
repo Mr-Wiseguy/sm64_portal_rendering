@@ -101,12 +101,20 @@ void *vec3s_to_vec3f(Vec3f dest, Vec3s a) {
  * Convert float vector a to a short vector 'dest' by rounding the components
  * to the nearest integer.
  */
-void *vec3f_to_vec3s(Vec3s dest, Vec3f a) {
-    // add/subtract 0.5 in order to round to the nearest s32 instead of truncating
-    dest[0] = a[0] + ((a[0] > 0) ? 0.5f : -0.5f);
-    dest[1] = a[1] + ((a[1] > 0) ? 0.5f : -0.5f);
-    dest[2] = a[2] + ((a[2] > 0) ? 0.5f : -0.5f);
-    return &dest; //! warning: function returns address of local variable
+void vec3f_to_vec3s(Vec3s dest, Vec3f a) {
+    dest[0] = roundf(a[0]);
+    dest[1] = roundf(a[1]);
+    dest[2] = roundf(a[2]);
+}
+
+/**
+ * Convert float vector a to a short vector 'dest' by rounding the components
+ * to the nearest integer.
+ */
+void vec3f_to_vec3i(s32 dest[3], Vec3f a) {
+    dest[0] = roundf(a[0]);
+    dest[1] = roundf(a[1]);
+    dest[2] = roundf(a[2]);
 }
 
 /**
@@ -872,7 +880,6 @@ s32 anim_spline_poll(Vec3f result) {
     return hasEnded;
 }
 
-// Thank you rocket robot
 void vec3f_rotate(Mat4 mat, Vec3f in, Vec3f out)
 {
     out[0] = mat[0][0] * in[0] + mat[1][0] * in[1] + mat[2][0] * in[2];
@@ -882,29 +889,35 @@ void vec3f_rotate(Mat4 mat, Vec3f in, Vec3f out)
 
 void vec3f_transform(Mat4 mat, Vec3f in, f32 w, Vec3f out)
 {
-    s32 i, j;
-    for (i = 0; i < 3; i++)
-    {
-        out[i] = mat[3][i] * w;
-        for (j = 0; j < 3; j++)
-        {
-            out[i] += mat[j][i] * in[j];
-        }
-    }
+	out[0] = in[0] * mat[0][0] + in[1] * mat[1][0] + in[2] * mat[2][0] + w * mat[3][0];
+	out[1] = in[0] * mat[0][1] + in[1] * mat[1][1] + in[2] * mat[2][1] + w * mat[3][1];
+	out[2] = in[0] * mat[0][2] + in[1] * mat[1][2] + in[2] * mat[2][2] + w * mat[3][2];
+}
+
+void vec3f_transform_vec4f(Mat4 mat, Vec3f in, f32 w, Vec4f out)
+{
+	out[0] = in[0] * mat[0][0] + in[1] * mat[1][0] + in[2] * mat[2][0] + w * mat[3][0];
+	out[1] = in[0] * mat[0][1] + in[1] * mat[1][1] + in[2] * mat[2][1] + w * mat[3][1];
+	out[2] = in[0] * mat[0][2] + in[1] * mat[1][2] + in[2] * mat[2][2] + w * mat[3][2];
+	out[3] = in[0] * mat[0][3] + in[1] * mat[1][3] + in[2] * mat[2][3] + w * mat[3][3];
+}
+
+void vec4f_transform(Mat4 mat, Vec4f in, Vec4f out)
+{
+	out[0] = in[0] * mat[0][0] + in[1] * mat[1][0] + in[2] * mat[2][0] + in[3] * mat[3][0];
+	out[1] = in[0] * mat[0][1] + in[1] * mat[1][1] + in[2] * mat[2][1] + in[3] * mat[3][1];
+	out[2] = in[0] * mat[0][2] + in[1] * mat[1][2] + in[2] * mat[2][2] + in[3] * mat[3][2];
+	out[3] = in[0] * mat[0][3] + in[1] * mat[1][3] + in[2] * mat[2][3] + in[3] * mat[3][3];
 }
 
 void vec3f_transform_vtx(Mat4 mat, Vec3f in, f32 w, Vtx *out)
 {
     Vec3f temp;
-    s32 i, j;
-    for (i = 0; i < 3; i++)
-    {
-        temp[i] = mat[3][i] * w;
-        for (j = 0; j < 3; j++)
-        {
-            temp[i] += mat[j][i] * in[j];
-        }
-    }
+    
+	temp[0] = in[0] * mat[0][0] + in[1] * mat[1][0] + in[2] * mat[2][0] + w * mat[3][0];
+	temp[1] = in[0] * mat[0][1] + in[1] * mat[1][1] + in[2] * mat[2][1] + w * mat[3][1];
+	temp[2] = in[0] * mat[0][2] + in[1] * mat[1][2] + in[2] * mat[2][2] + w * mat[3][2];
+
     out->v.ob[0] = temp[0];
     out->v.ob[1] = temp[1];
     out->v.ob[2] = temp[2];
@@ -942,6 +955,12 @@ void mtxf_inverse_rotate_translate(Mat4 in, Mat4 out) {
 
     mtxf_translate(invTranslate, negTranslate);
     mtxf_mul(out, invTranslate, invRot);
+}
+
+void ndc_to_screen(Vec4f in, Vec2s out)
+{
+    out[0] = (in[0] + 1.0f) * (SCREEN_WIDTH / 2);
+    out[1] = (in[1] - 1.0f) * (-SCREEN_HEIGHT / 2);
 }
 
 void vec4f_scale(Vec4f dest, Vec4f src, f32 scale) {

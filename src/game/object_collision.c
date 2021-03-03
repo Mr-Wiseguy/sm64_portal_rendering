@@ -6,6 +6,7 @@
 #include "mario.h"
 #include "object_list_processor.h"
 #include "spawn_object.h"
+#include "engine/math_util.h"
 
 struct Object *debug_print_obj_collision(struct Object *a) {
     struct Object *sp24;
